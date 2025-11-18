@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>График перевода показателей</title>
+    <!-- Подключаем Chart.js и плагин аннотаций -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+    
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f9; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #333; }
+        .calculator { margin-top: 30px; padding: 20px; background: #eef2f5; border-radius: 8px; text-align: center; }
+        input { padding: 10px; font-size: 16px; width: 150px; border: 1px solid #ccc; border-radius: 4px; }
+        button { padding: 10px 20px; font-size: 16px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+        #result { margin-top: 15px; font-weight: bold; font-size: 18px; color: #333; }
+        canvas { max-height: 500px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>График перевода показателя 12 в баллы</h2>
+    <canvas id="myChart"></canvas>
+
+    <!-- Мини-калькулятор для проверки -->
+    <div class="calculator">
+        <h3>Быстрый расчет</h3>
+        <input type="number" id="inputValue" placeholder="Введите значение" step="0.01">
+        <button onclick="calcScore()">Рассчитать</button>
+        <div id="result"></div>
+    </div>
+</div>
+
+<script>
+    // --- Логика расчета (Формула) ---
+    function calculateScore(x) {
+        let score = 0;
+        if (x < 400) {
+            score = (5 / 400) * x;
+        } else {
+            score = 5 + (x - 400) / 120;
+        }
+        return score.toFixed(2); // Округляем до 2 знаков
+    }
+
+    // --- Данные для построения линии функции ---
+    // Генерируем точки от 0 до 2800 для плавной линии
+    const lineData = [];
+    for (let i = 0; i <= 2800; i+=50) {
+        lineData.push({x: i, y: calculateScore(i)});
+    }
+
+    // --- Данные из вашего списка (для примера на графике) ---
+    // Я взял несколько ярких примеров из ваших данных, включая максимум
+    const userPoints = [
+        {x: 315.40, y: calculateScore(315.40), label: "Пример (низкий)"},
+        {x: 400, y: 5, label: "Порог Удовл."},
+        {x: 760, y: 8, label: "Порог Хорошо"},
+        {x: 1000, y: 10, label: "Порог Отлично"},
+        {x: 1208.14, y: calculateScore(1208.14), label: "Пример (высокий)"},
+        {x: 2597.79, y: calculateScore(2597.79), label: "MAX значение"}
+    ];
+
+    // --- Настройка графика ---
+    const ctx = document.getElementById('myChart').getContext('2d');
+    const myChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            datasets: [
+                {
+                    label: 'Функция перевода',
+                    data: lineData,
+                    borderColor: 'blue',
+                    borderWidth: 2,
+                    pointRadius: 0, // Скрываем точки на самой линии
+                    fill: false,
+                    tension: 0 // Линии прямые, без сглаживания
+                },
+                {
+                    label: 'Ваши примеры',
+                    data: userPoints,
+                    type: 'scatter', // Точечный график поверх линии
+                    backgroundColor: 'red',
+                    borderColor: 'black',
+                    borderWidth: 1,
+                    pointRadius: 6,
+                    pointHoverRadius: 8
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            interaction: {
+                mode: 'nearest',
+                axis: 'x',
+                intersect: false
+            },
+            scales: {
+                x: {
+                    type: 'linear',
+                    position: 'bottom',
+                    title: { display: true, text: 'Естественный показатель (Публ. на 100 НПР)' },
+                    max: 2800
+                },
+                y: {
+                    title: { display: true, text: 'Баллы' }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `Значение: ${context.parsed.x}, Балл: ${context.parsed.y}`;
+                        }
+                    }
+                },
+                annotation: {
+                    annotations: {
+                        box1: {
+                            type: 'box',
+                            xMin: 0, xMax: 400,
+                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                            label: { content: "Неудовл.", position: "start", color: "red", font: {size: 10} }
+                        },
+                        box2: {
+                            type: 'box',
+                            xMin: 400, xMax: 760,
+                            backgroundColor: 'rgba(255, 205, 86, 0.15)',
+                            label: { content: "Удовл.", position: "center", color: "#d4ac0d", font: {size: 10} }
+                        },
+                        box3: {
+                            type: 'box',
+                            xMin: 760, xMax: 1000,
+                            backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                            label: { content: "Хорошо", position: "center", color: "green", font: {size: 10} }
+                        },
+                        box4: {
+                            type: 'box',
+                            xMin: 1000, xMax: 2800,
+                            backgroundColor: 'rgba(153, 102, 255, 0.1)',
+                            label: { content: "Отлично", position: "start", color: "purple", font: {size: 10} }
+                        },
+                        line1: {
+                            type: 'line',
+                            yMin: 5, yMax: 5,
+                            borderColor: 'rgba(0,0,0,0.2)',
+                            borderDash: [6, 6],
+                            label: { content: "5 баллов", position: "end", backgroundColor: "rgba(0,0,0,0.7)", color: "white", font: {size: 9} }
+                        },
+                        line2: {
+                            type: 'line',
+                            yMin: 10, yMax: 10,
+                            borderColor: 'rgba(0,0,0,0.2)',
+                            borderDash: [6, 6],
+                            label: { content: "10 баллов", position: "end", backgroundColor: "rgba(0,0,0,0.7)", color: "white", font: {size: 9} }
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // --- Функция для калькулятора на странице ---
+    function calcScore() {
+        const val = parseFloat(document.getElementById('inputValue').value);
+        const resDiv = document.getElementById('result');
+        
+        if (isNaN(val)) {
+            resDiv.innerHTML = "<span style='color:red'>Введите число</span>";
+            return;
+        }
+        
+        const score = calculateScore(val);
+        let category = "";
+        let color = "";
+
+        if (score < 5) { category = "Неудовлетворительно"; color = "red"; }
+        else if (score < 8) { category = "Удовлетворительно"; color = "#d4ac0d"; }
+        else if (score < 10) { category = "Хорошо"; color = "green"; }
+        else { category = "Отлично"; color = "purple"; }
+
+        resDiv.innerHTML = `Баллы: ${score} <br> <span style="color:${color}">(${category})</span>`;
+    }
+</script>
+
+</body>
+</html>
